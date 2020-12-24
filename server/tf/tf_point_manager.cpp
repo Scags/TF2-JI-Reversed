@@ -72,7 +72,6 @@ CTFPointManager::CTFPointManager()
 	int numpoints = 30 - v1;
 	int v3 = (30 - v1) / 4;
 	int v16 = 4 * v3;
-	int *v4 = &m_nSpawnTime[v1];
 	int v5 = 0;
 	do
 	{
@@ -201,7 +200,7 @@ bool CTFPointManager::AddPointInternal(unsigned int index)
 	return true;
 }
 
-// 75% ; most likely operational
+// 90% ; most likely operational
 void CTFPointManager::Update(void)
 {
 	// VPROF_BUDGET(what, ever);
@@ -214,10 +213,8 @@ void CTFPointManager::Update(void)
 
 	FOR_EACH_VEC_BACK(m_Points, i)
 	{
-		point = m_Points[i];
-		int *v5 = *(this + 0x20);	// FIXME
-		int v6 = v5 ? *(v5 + 6) : 0;
-		m_Randomizer.SetSeed(this->m_nSpawnTime[point->m_iIndex] + v6);
+		tf_point_t *point = m_Points[i];
+		m_Randomizer.SetSeed(this->m_nSpawnTime[point->m_iIndex] + entindex());
 
 		Vector vec1, vec2, vec3;
 		if ((enginetrace->GetPointContents(point->m_vecSpartPos) & 0x4030) != 0
@@ -374,15 +371,15 @@ bool CTFPointManager::UpdatePoint(tf_point_t *pPoint, unsigned int index, float 
 	float drag = GetDrag();
 	float scaleddrag = drag * scale;
 	float normalized = pPoint->m_vecVelocity.NormalizeInPlace();
-	float v24 = (1.0f - scaleddrag) * normalized;
+	float calc = (1.0f - scaleddrag) * normalized;
 	Vector vecVelToSet;
-	if (v24 < 0.0f)
+	if (calc < 0.0f)
 	{
 		vecVelToSet = Vector(0.0f);
 	}
 	else
 	{
-		float fmin = fminf(v24, normalized);
+		float fmin = fminf(calc, normalized);
 		vecVelToSet = pPoint->m_vecVelocity * fmin;
 	}
 

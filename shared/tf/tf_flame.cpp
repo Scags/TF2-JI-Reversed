@@ -197,7 +197,7 @@ void CTFFlameManager::ModifyAdditionalMovementInfo(tf_point_t *pPoint, float sca
 
 		if (computed >= 0.0)
 			fOut = fminf(normalized, computed);
-		pFlamePoint->m_vecAttackerVel *= v13;
+		pFlamePoint->m_vecAttackerVel *= fOut;
 	}
 }
 
@@ -210,7 +210,6 @@ bool CTFFlameManager::OnPointHitWall(tf_point_t *pPoint, Vector &vecPos, Vector 
 	{
 		pPoint->m_flLifeTime += m_flFlameReflectionAdditionalLifeTime;
 		Vector vecNormal = tf->plane.normal;
-		v12 = ((vecPos.y * v10) + (vecPos.x * v9)) + (vecPos.z * v11);
 		float vellength = vecPos.LengthSqr();
 		Vector vecMove = (vecPos - vecNormal * vellength);
 		if (this->m_nShouldReflect > 0)

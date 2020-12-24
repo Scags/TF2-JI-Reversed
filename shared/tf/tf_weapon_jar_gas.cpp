@@ -34,7 +34,7 @@ CTFGasManager::~CTFGasManager()
 // 100%
 void CTFGasManager::AddGas(void)
 {
-	for (int i = (int)gpGlobals->curtime / gpGlobals->interval_per_tick + 0.5f; m_Points.Count() < GetMaxPoints();)
+	for (int i = (int)(gpGlobals->curtime / gpGlobals->interval_per_tick + 0.5f); m_Points.Count() < GetMaxPoints();)
 	{
 		if (!AddPoint(i))
 			break;
@@ -239,6 +239,17 @@ void CTFGasManager::Update(CTFGasManager *this)
 void CTFGasManager::UpdateOnRemove(void)
 {
 	BaseClass::UpdateOnRemove();
+}
+
+CTFGasManager *CTFGasManager::Create(CBaseEntity *pEntity, Vector const&vecPos)
+{
+	CTFGasManager *pGas = static_cast< CTFGasManager *>(CBaseEntity::Create("tf_gas_manager", vecPos, &vec3_angle, pEntity));
+	if (pGas)
+	{
+		pGas->SetOwnerEntity(pEntity);
+		pGas->ChangeTeam(pEntity->GetTeamNumber());
+	}
+	return pGas;
 }
 
 // END REVERSE 12/23/2020

@@ -33,7 +33,7 @@ public:
 	virtual void 		Update(void);
 	virtual void 		UpdateOnRemove(void);
 
-	static CTFGasManager *Create(CBaseEntity *,Vector const&);
+	static CTFGasManager *Create(CBaseEntity * pOwner,Vector const&vecPos);
 
 public:
 	CUtlVector<EHANDLE> m_Gassed;
