@@ -1,4 +1,4 @@
-# TF2-JE-Reversed
+# TF2-JI-Reversed
 Various reversed code from TF2's Jungle Inferno update
 
 The provided code not intended to be compileable. It simply exists to give developers a glimpse at the behaviors of things added during Jungle Inferno. I only intend to reverse serverside code, any included client-sided code (mainly netvars) are a crapshoot.
