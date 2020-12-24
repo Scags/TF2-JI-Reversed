@@ -262,12 +262,12 @@ CTFPointManager::~CTFPointManager()
 }
 
 // 100%
-bool CTFPointManager::AddPoint(int index)
+bool CTFPointManager::AddPoint(int nSpawnTime)
 {
 	if (m_Points.Count() >= GetMaxPoints() || !AddPointInternal(m_unNextPointIndex))
 		return false;
 
-	m_nSpawnTime[m_unNextPointIndex] = index;
+	m_nSpawnTime[m_unNextPointIndex] = nSpawnTime;
 	m_unNextPointIndex = (m_unNextPointIndex + 1) % 30;
 	return true;
 }
@@ -395,11 +395,11 @@ bool CTFPointManager::UpdatePoint(tf_point_t *pPoint, unsigned int index, float 
 }
 
 // 99% ; Scale doesn't show up in disassembly?
-bool CTFPointManager::OnPointHitWall(tf_point_t *pPoint, Vector *vecPos, Vector *vecAdditionalVel, const CGameTrace *tr, float scale)
+bool CTFPointManager::OnPointHitWall(tf_point_t *pPoint, Vector &vecPos, Vector &vecAdditionalVel, CGameTrace const &tr, float scale)
 {
 	float radius = GetRadius(pPoint);
-	*vecPos = tr.normal * radius + tr.endpos;
-	*vecAdditionalVel = vec3_origin;
+	vecPos = tr.normal * radius + tr.endpos;
+	vecAdditionalVel = vec3_origin;
 	return false;
 }
 

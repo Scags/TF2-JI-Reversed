@@ -16,6 +16,8 @@
 #include "basehandle.h"
 #include "shot_manipulator.h"
 #include "tf_weapon_flamethrower.h"
+#include "tf_weapon_compound_bow.h"
+#include "takedamageinfo.h"
 
 // %REVERSED 12/22/2020
 IMPLEMENT_NETWORKCLASS_ALIASED(TFFlameManager, DT_TFFlameManager)
@@ -69,7 +71,6 @@ LINK_ENTITY_TO_CLASS(tf_flame_manager, CTFFlameManager);
 CTFFlameManager::CTFFlameManager()
 {
 	m_FlameManager = ITFFlameManager(true);
-
 	m_BurnedEntities = CUtlMap<CHandle<CBaseEntity>, burned_entity_t>();
 	m_hWeapon = -1;
 	m_hAttacker = -1;
@@ -201,7 +202,7 @@ void CTFFlameManager::ModifyAdditionalMovementInfo(tf_point_t *pPoint, float sca
 }
 
 // 100%
-bool CTFFlameManager::OnPointHitWall(tf_point_t *pPoint, Vector *vecPos, Vector *vecVel, const CGameTrace *tr, float scale)
+bool CTFFlameManager::OnPointHitWall(tf_point_t *pPoint, Vector &vecPos, Vector &vecAdditionalVel, CGameTrace const &tr, float scale)
 {
 	// VPROF_BUDGET
 
@@ -209,17 +210,17 @@ bool CTFFlameManager::OnPointHitWall(tf_point_t *pPoint, Vector *vecPos, Vector 
 	{
 		pPoint->m_flLifeTime += m_flFlameReflectionAdditionalLifeTime;
 		Vector vecNormal = tf->plane.normal;
-		v12 = ((vecVel->y * v10) + (vecVel->x * v9)) + (vecVel->z * v11);
-		float vellength = vecVel->LengthSqr();
-		Vector vecMove = (*vecVel - vecNormal * vellength);
+		v12 = ((vecPos.y * v10) + (vecPos.x * v9)) + (vecPos.z * v11);
+		float vellength = vecPos.LengthSqr();
+		Vector vecMove = (vecPos - vecNormal * vellength);
 		if (this->m_nShouldReflect > 0)
 		{
-			vecMove += vecMove - *vecVel;
+			vecMove += vecMove - vecPos;
 		}
 
 		pPoint->m_vecAttackerVel = vec3_origin;
-		*vecVel = vecMove;
-		*vecPos = (vecNormal * GetRadius(pPoint) + tr->endpos) + (vecOut * ((1.0f - tr->fraction) * scale));
+		vecPos = vecMove;
+		vecPos = (vecNormal * GetRadius(pPoint) + tr.endpos) + (vecOut * ((1.0f - tr.fraction) * scale));
 		return false;
 	}
 	return true;
@@ -272,12 +273,12 @@ void CTFFlameManager::Update(void)
 }
 
 // 100%
-void CTFFlameManager::UpdateDamage(int a2, float a3, float a4, bool a5)
+void CTFFlameManager::UpdateDamage(int dmgflags, float a3, float a4, bool a5)
 {
-	this->field_4BC = a3;
-	this->field_4B8 = a2;
-	this->field_4C0 = a4;
-	this->field_4C4 = a5;
+	m_flDamage = a3;
+	m_fDamageFlags = dmgflags;
+	m_flBurnDelay = a4;
+	m_bIsCritical = a5;
 }
 
 // 100%
@@ -503,5 +504,185 @@ bool CTFFlameManager::BCanBurnEntityThisFrame(CBaseEntity *pEntity)
 	unsigned short index = m_BurnedEntities.Find(pEntity->GetRefEHandle());
 	if (index == -1)
 		return true;
-	return gpGlobals->curtime - m_BurnedEntities[index].field_10 >= field_4C0;
+	return gpGlobals->curtime - m_BurnedEntities[index].field_10 >= m_flBurnDelay;
+}
+
+// 100%
+void CTFFlameManager::PostEntityThink(void)
+{
+	FOR_EACH_MAP_FAST(m_BurnedEntities, i)
+	{
+		burned_entity_t burned = m_BurnedEntities[i];
+		if (gpGlobals->curtime - burned.m_flSpawnTime2 <= m_flBurnDelay)
+			continue;
+
+		m_BurnedEntities.RemoveAt(i);
+	}
+
+	CTFFlameThrower *pWeapon = static_cast< CTFFlameThrower * >(m_hWeapon.Get());
+	if (pWeapon)
+	{
+		pWeapon->ResetFlameHitCount();
+		if (m_BurnedEntities.Count())
+		{
+			pWeapon->IncrementFlameDamageCount();
+			pWeapon->IncrementActiveFlameCount();
+		}
+	}
+}
+
+// 80% ; Decomp wasn't very nice with this
+bool CTFFlameManager::OnCollide(CBaseEntity *pEntity, int iIndex)
+{
+	// VPROF_BUDGET
+	CBaseEntity *pAttacker = m_hAttacker.Get();
+	if (!pAttacker)
+		return false;
+
+	unsigned short findindex = m_BurnedEntities.Find(pAttacker->GetRefEHandle());
+	if (findindex != -1)
+	{
+		burned_entity_t *burned = &m_BurnedEntities[findindex];
+		burned->field_10 = (burned->field_10 + 2.0) - clamp((gpGlobals->curtime - m_Points[iIndex]->m_flSpawnTime) * 50.0, 0.0, 1.0);
+	}
+
+	if (!BCanBurnEntityThisFrame(pEntity))
+	{
+		return;
+	}
+	CTFPlayer *pPlayer = static_cast< CTFPlayer * >(pEntity);
+	if (pEntity->IsPlayer() && pEntity->InSameTeam(pAttacker))
+	{
+		if (!pPlayer->IsPlayerClass(TF_CLASS_SNIPER))
+			return
+
+		CTFCompoundBow *pWeapon = static_cast< CTFCompoundBow * >(pPlayer->GetActiveTFWeapon());
+		if (pWeapon && pWeapon->GetWeaponID() == TF_WEAPON_COMPOUND_BOW)	// 61
+			pWeapon->SetArrowAlight(true);
+	}
+	else
+	{
+		int damageflags = m_fDamageFlags;
+		SetHitTarget();
+		flame_point_t *pFlamePoint = static_cast< flame_point_t * >(m_Points[iIndex]);
+		if (pEntity->IsPlayer())
+		{
+			Vector vecDist = pFlamePoint->m_vecStartPos - pFlamePoint->m_vecAttackerPos;
+			float dist = vecDist.NormalizeInPlace();
+			QAngle vecAng = pEntity->GetAbsAngles();
+
+			Vector vecFwd;
+			AngleVectors(vecAng, &vecFwd);
+			vecFwd.z = 0.0;
+			vecFwd.NormalizeInPlace();
+			if (vecFwd.LengthSqr() * dist > 0.8f)
+			{
+				if (m_bIsCritical)	// Is backburner?
+					damageflags |= DMG_CRIT;
+
+				pPlayer->HandleAchievement_Pyro_BurnFromBehind(pAttacker);
+			}
+			if (pPlayer->IsPlayerClass(TF_CLASS_PYRO))
+			{
+				if (pPlayer->m_Shared.InCond(TF_COND_TAUNTING))
+				{
+					static CSchemaItemDefHandle flipTaunt("Flippin' Awesome Taunt");
+					if (pPlayer->GetTauntEconItemView())
+					{
+						if (pPlayer->GetTauntEconItemView()->GetItemDefinition() == flipTaunt)
+						{
+							pPlayer->AwardAchievement(ACHIEVEMENT_TF_PYRO_IGNITE_PLAYER_BEING_FLIPPED, 1);	// 1641
+						}
+					}
+				}
+				pPlayer->m_Shared.AddCond(TF_COND_HEALING_DEBUFF, 2.0f, pPlayer);	// 118
+			}
+		}
+	
+		float scale = GetFlameDamageScale(pFlamePoint, pEntity->IsPlayer() ? pPlayer : NULL);
+		CBaseEntity *pOwner = m_hOwnerEntity.Get();
+		float damage = fmaxf(scale * m_flDamage, 1.0);
+
+		CTakeDamageInfo info(pOwner, pEntity, pOwner, damage, damageflags, 3);
+
+		Vector vecPosition = pEntity->GetAbsOrigin();
+
+		// FIXME ; what is this?
+//		if ((v84 & 0x10) != 0)
+//			info.SetCritType(CRIT_FULL);
+		if (damageflags & DMG_CRIT)
+			info.SetCritType(CRIT_FULL);
+
+		// FIXME ; this doesn't seem right
+		if (TFGameRules())
+		{
+			CBaseCombatCharacter *pBoss = TFGameRules()->GetActiveBoss();
+			if (pBoss)
+			{
+				if (pBoss->GetBossType() == HALLOWEEN_BOSS_MERASMUS) // 3
+				{
+					info.SetDamagePosition(pBoss->GetAbsOrigin());
+				}
+			}
+		}
+
+		trace_t tr;
+		UTIL_TraceLine(pEntity->WorldSpaceCenter(), WorldSpaceCenter(), 0x4200400B, this, COLLISION_GROUP_NONE, &tr);
+		pEntity->DispatchTraceAttack(info, GetAbsVelocity(), &tr);
+		ApplyMultiDamage();
+	}
+
+	burned_entity_t *burned;
+	if (findindex == -1)
+	{
+		burned = &m_BurnedEntities[m_BurnedEntities.Insert(pEntity->GetRefEHandle())];
+		burned->m_flSpawnTime = gpGlobals->curtime;
+		burned->field_8 = 1.0;
+		burned->m_hEntity = pEntity->GetRefEHandle();
+	}
+	else
+	{
+		burned = m_BurnedEntities[findindex];
+		burned->m_flSpawnTime2 = gpGlobals->curtime;
+	}
+}
+
+// 100%
+float CTFFlameManager::GetLifeTime(void)
+{
+	float random = m_Randomizer.RandomFloat(-m_flRandomLifeTimeOffset, m_flRandomLifeTimeOffset);
+	return random + m_flBurnDelay;
+}
+
+// 100%
+int CTFFlameManager::GetMaxPoints(void)
+{
+	return 30;
+}
+
+// 100%
+tf_point_t* CTFFlameManager::AllocatePoint()
+{
+	flame_point_t* pPoint = new flame_point_t();
+	return pPoint;
+}
+
+// 100%
+CTFFlameManager *CTFFlameManager::Create(CBaseEntity *pEntity, bool b)
+{
+	CTFFlameManager *pFlameManager = static_cast< CTFFlameManager * >(CBaseEntity::Create("tf_flame_manager", vec3_origin, vec3_angle, pEntity));
+	if (pFlameManager)
+	{
+		pFlameManager->SetOwnerEntity(pEntity);
+		pFlameManager->m_hAttacker = pEntity->GetRefEHandle();
+
+		CTFWeaponBase *pWeapon = dynamic_cast< CTFWeaponBase * >(pEntity);
+		if (pWeapon)
+		{
+			pFlameManager->m_hWeapon = pWeapon->GetRefEHandle();
+			pFlameManager->ChangeTeam(pFlameManager->GetTeamNumber());
+			pFlameManager->HookAttributes();
+		}
+	}
+	return pFlameManager;
 }

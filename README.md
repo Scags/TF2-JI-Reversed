@@ -10,6 +10,6 @@ Code is currently based on the December 16, 2020 Patch.
 - tf_point_manager.h - Mostly done
 - tf_point_manager.cpp - Mostly done
 - tf_flame.h - Mostly done
-- tf_flame.cpp - 75%
+- tf_flame.cpp - Mostly done
 - tf_weapon_jar_gas.h - Mostly done
 - tf_weapon_jar_gas.cpp - Mostly done

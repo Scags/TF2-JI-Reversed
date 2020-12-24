@@ -26,23 +26,28 @@ public:
 	}
 public:
 	static CUtlVector< ITFFlameManager* > m_ITFFlameManagerAutoList;
-}
+};
 
 struct burned_entity_t
 {
-	int field_0;
+	EHANDLE m_hEntity;
 	int field_4;
-	int field_8;
-	int field_C;
+	float field_8;
+	float m_flSpawnTime;
 	float field_10;
-}
+};
 
-struct flame_point_t : public tf_point_t
+struct flame_point_t : tf_point_t
 {
 	virtual ~flame_point_t() {}
+	flame_point_t()
+	{
+		m_vecAttackerVel = vec3_origin;
+		m_vecAttackPos = vec3_origin;
+	}
 	Vector m_vecAttackerVel;
 	Vector m_vecAttackerPos;
-}
+};
 
 class CTFFlameManager : public CTFPointManager, public ITFFlameManager
 {
@@ -83,17 +88,18 @@ public:
 	virtual void 		OnCollide(CBaseEntity *pEntity,int index);
 	virtual float 		GetLifeTime(void);
 	virtual int 		GetMaxPoints(void);
-	virtual void 		AllocatePoint(void);
+	virtual tf_point_t* AllocatePoint(void);
+
 	static CTFFlameManager* Create(CBaseEntity *pEntity,bool b);
 
 public:
 //	int field_494;		// P sure this is the inherited ITFFlameManager vtable
 	ITFFlameManager* m_FlameManager;
-	CUtlMap<CHandle<CBaseEntity>, burned_entity_t> m_BurnedEntities;
-	int field_4B8;
-	float field_4BC;
-	float field_4C0;
-	bool field_4C4;
+	CUtlMap<EHANDLE, burned_entity_t> m_BurnedEntities;
+	int m_fDamageFlags;
+	float m_flDamage;
+	float m_flBurnDelay;
+	bool m_bIsCritical;
 	CNetworkVar(CHandle< CTFFlameThrower >, m_hWeapon);
 	CNetworkVar(CHandle< CBaseEntity >, m_hAttacker);
 	CNetworkVar(float, m_flSpreadDegree);

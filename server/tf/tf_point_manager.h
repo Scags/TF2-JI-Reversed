@@ -59,7 +59,7 @@ public:
 	virtual Vector 		GetInitialVelocity(void);
 	virtual bool 		ShouldCollide(CBaseEntity * pEntity);
 	virtual void 		OnCollide(CBaseEntity * pEntity, int i);
-	virtual void 		AllocatePoint(void);
+	virtual tf_point_* 	AllocatePoint(void);
 	virtual void 		Update(void);
 	virtual bool 		UpdatePoint(tf_point_t *point,int i,float f,Vector *v1 = NULL,Vector *v2 = NULL,Vector *v3 = NULL);
 	virtual bool 		OnPointHitWall(tf_point_t *point,Vector &v1,Vector &v2,CGameTrace const&tr,float f);
@@ -81,7 +81,6 @@ public:
 	CNetworkVar(unsigned int, m_unNextPointIndex);
 	float m_flThinkTime;
 	CUtlVector<tf_point_t*> m_Points;
-	void* field_494;	// Ptr to m_Points.m_Memory? This could be the UtlVector debug pointer but I'll leave it here to be explicit
 };
 
 
