@@ -50,7 +50,7 @@ public:
 	void RemovePoint(int);
 	virtual void UpdateOnRemove(void);
 	void ClearPoints(void);		// CODE XREF: CTFPlayer::RemoveOwnedProjectiles(void)
-	tf_point_t* AddPointInternal(unsigned int index);
+	tf_point_t* AddPointInternal(int index);
 	virtual ~CTFPointManager();
 
 	virtual bool 		AddPoint(int index);

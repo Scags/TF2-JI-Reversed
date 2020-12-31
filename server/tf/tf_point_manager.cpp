@@ -131,16 +131,13 @@ int CTFPointManager::UpdateTransmitState()
 // END REVERSE 12/21/2020
 
 // %REVERSED 12/22/2020
-// 80%	; Not confident with the tracing
+// 90%	; Not confident with the tracing
 void CTFPointManager::Touch(CBaseEntity *pOther)
 {
 	if (ShouldCollide(pOther) && m_Points.Count() > 0)
 	{
-		bool go = false;
-		int index = 0;
 		FOR_EACH_VEC_BACK(m_Points, i)
 		{
-			index = i;
 			tf_point_t *point = m_Points[i];
 			float radius = GetRadius(point);
 			int flags = 0x4200400B;
@@ -153,14 +150,12 @@ void CTFPointManager::Touch(CBaseEntity *pOther)
 
 			trace_t tr;
 			enginetrace->ClipRayToEntity(ray, flags, pOther, &tr);
-			if (tr.fraction < 1.0f || ray.m_IsSwept || ray.m_IsRay)
+			if (tr.DidHit())
 			{
-				go = true;
+				OnCollide(pOther, i);
 				break;
 			}
 		}
-		if (go)
-			OnCollide(pOther, index);
 	}
 	return result;
 }
@@ -189,7 +184,7 @@ void CTFPointManager::ClearPoints(void)
 }
 
 // 100%
-bool CTFPointManager::AddPointInternal(unsigned int index)
+bool CTFPointManager::AddPointInternal(int index)
 {
 	tf_point_t *point = AllocatePoint();
 	if (!point)
@@ -214,12 +209,12 @@ void CTFPointManager::Update(void)
 	FOR_EACH_VEC_BACK(m_Points, i)
 	{
 		tf_point_t *point = m_Points[i];
-		m_Randomizer.SetSeed(this->m_nSpawnTime[point->m_iIndex] + entindex());
+		m_Randomizer.SetSeed(m_nSpawnTime[point->m_iIndex] + entindex());
 
 		Vector vec1, vec2, vec3;
 		if ((enginetrace->GetPointContents(point->m_vecSpartPos) & 0x4030) != 0
 		|| gpGlobals->curtime > (point->m_flSpawnTime + point->m_flLifetime)
-		|| !UpdatePoint(point, i, m_flThinkTime, vec1, vec2, vec3))
+		|| !UpdatePoint(point, i, m_flThinkTime, &vec1, &vec2, &vec3))
 		{
 			RemovePoint(point);
 			continue;
@@ -261,10 +256,10 @@ CTFPointManager::~CTFPointManager()
 // 100%
 bool CTFPointManager::AddPoint(int nSpawnTime)
 {
-	if (m_Points.Count() >= GetMaxPoints() || !AddPointInternal(m_unNextPointIndex))
+	if (m_Points.Count() >= GetMaxPoints() || !AddPointInternal((int)m_unNextPointIndex))
 		return false;
 
-	m_nSpawnTime[m_unNextPointIndex] = nSpawnTime;
+	m_nSpawnTime[(int)m_unNextPointIndex] = nSpawnTime;
 	m_unNextPointIndex = (m_unNextPointIndex + 1) % 30;
 	return true;
 }
@@ -295,7 +290,7 @@ Vector CTFPointManager::GetInitialVelocity(void)
 }
 
 // 100%
-void CTFPointManager::OnCollide(CBaseEntity * pEntity, unsigned int i)
+void CTFPointManager::OnCollide(CBaseEntity * pEntity, int i)
 {
 
 }
@@ -303,12 +298,12 @@ void CTFPointManager::OnCollide(CBaseEntity * pEntity, unsigned int i)
 // 100%
 tf_point_t* CTFPointManager::AllocatePoint()
 {
-	tf_point_t* pPoint = tf_point_t();
+	tf_point_t* pPoint = new tf_point_t();
 	return pPoint;
 }
 
 // 99% ; those dynamic casts are fishy
-bool CTFPointManager::UpdatePoint(tf_point_t *pPoint, unsigned int index, float scale, Vector *a5, Vector *a6, Vector *a7)
+bool CTFPointManager::UpdatePoint(tf_point_t *pPoint, int index, float scale, Vector *a5, Vector *a6, Vector *a7)
 {
 	if (scale <= 0.0)
 		return true;

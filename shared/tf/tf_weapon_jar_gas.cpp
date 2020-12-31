@@ -1,3 +1,4 @@
+// Definitely not a Valve header
 
 #include "cbase.h"
 #include "tf_point_manager.h"
@@ -101,7 +102,7 @@ bool CTFGasManager::ShouldCollide(CBaseEntity *pEntity)
 {
 	if (pEntity->IsPlayer())
 	{
-		if (pEntity->GetTeamNumber() != CBaseEntity::GetTeamNumber(this) 
+		if (pEntity->GetTeamNumber() != GetTeamNumber()
 		&& (!TFGameRules() || !TFGameRules()->IsTruceActive()))
 		{
 			return m_Gassed.Find(pPlayer->GetRefEHandle()) == -1;
@@ -224,7 +225,7 @@ void CTFGasManager::Update(CTFGasManager *this)
 					}
 
 					SetAbsOrigin(vecCenter);
-					UTIL_SetSize(this, -vecCenter, vecCenter);
+					UTIL_SetSize(this, vecMin, vecMax);
 				}
 			}
 		}
@@ -241,9 +242,10 @@ void CTFGasManager::UpdateOnRemove(void)
 	BaseClass::UpdateOnRemove();
 }
 
+// 100%
 CTFGasManager *CTFGasManager::Create(CBaseEntity *pEntity, Vector const&vecPos)
 {
-	CTFGasManager *pGas = static_cast< CTFGasManager *>(CBaseEntity::Create("tf_gas_manager", vecPos, &vec3_angle, pEntity));
+	CTFGasManager *pGas = static_cast< CTFGasManager *>(CBaseEntity::Create("tf_gas_manager", vecPos, vec3_angle, pEntity));
 	if (pGas)
 	{
 		pGas->SetOwnerEntity(pEntity);
