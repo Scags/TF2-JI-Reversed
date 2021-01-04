@@ -353,7 +353,7 @@ void CTFFlameThrower::ComputeCrayAirBlastForce(CTFPlayer *pAirblasted, CTFPlayer
 
 // END REVERSE 12/29/2020
 
-// %REVERSED 1/4/2020
+// %REVERSED 1/4/2021
 
 // 95%
 bool CTFFlameThrower::DeflectPlayer(CTFPlayer *pAirblasted, CTFPlayer *pAirblaster, Vector &vecFwd)
