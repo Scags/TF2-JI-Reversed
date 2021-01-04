@@ -38,7 +38,7 @@ CTFPointManager::CTFPointManager()
 	m_Randomizer = CUniformRandomStream();
 	m_nRandomSeed = 0;
 	// This is what valve thinks of as random, apparently
-	int v1 = -(((this + 4) & 0xF) / 4) & 3;
+	int v1 = -((((int)this + 4) & 0xF) / 4) & 3;
 	int v17 = 0, v19 = 0;
 	if (v1)
 	{
@@ -51,7 +51,7 @@ CTFPointManager::CTFPointManager()
 		else
 		{
 			m_nSpawnTime[1] = 0;
-			if ((-(((this + 4) & 0xF) / 4) & 3) == 3)
+			if ((-((((int)this + 4) & 0xF) / 4) & 3) == 3)
 			{
 				m_nSpawnTime[2] = 0;
 				v17 = 27;
@@ -87,7 +87,6 @@ CTFPointManager::CTFPointManager()
 	}
 	m_unNextPointIndex = 0;
 	m_Points = CUtlVector();
-	field_494 = NULL;
 	m_flThinkTime = gpGlobals->curtime;
 }
 
@@ -172,7 +171,6 @@ int CTFPointManager::RemovePoint(int iIndex)
 void CTFPointManager::UpdateOnRemove(void)
 {
 	m_Points.RemoveAll();
-	field_494 = m_Points.m_pMemory;		// TODO; This can't be right, but it shows up as such in disasm!
 	BaseClass::UpdateOnRemove();
 }
 
@@ -180,7 +178,6 @@ void CTFPointManager::UpdateOnRemove(void)
 void CTFPointManager::ClearPoints(void)
 {
 	m_Points.RemoveAll();
-	field_494 = m_Points.m_pMemory;		// TODO; This can't be right, but it shows up as such in disasm!
 }
 
 // 100%
@@ -305,7 +302,7 @@ tf_point_t* CTFPointManager::AllocatePoint()
 // 99% ; those dynamic casts are fishy
 bool CTFPointManager::UpdatePoint(tf_point_t *pPoint, int index, float scale, Vector *a5, Vector *a6, Vector *a7)
 {
-	if (scale <= 0.0)
+	if (scale <= 0.0f)
 		return true;
 
 	float radius = GetRadius();
@@ -339,10 +336,10 @@ bool CTFPointManager::UpdatePoint(tf_point_t *pPoint, int index, float scale, Ve
 	trace_t tr;
 	UTIL_TraceHull(pPoint->m_vecStartPos, pPoint->m_vecStartPos, vecMins, vecMaxs, 0x200400B, this, 1, &tr);
 
-	if (!ShouldIgnoreStartSolid(this) && tr.startsolid)
+	if (!ShouldIgnoreStartSolid() && tr.startsolid)
 		return false;
 
-	if (tr.fraction < 1.0)
+	if (tr.fraction < 1.0f)
 	{
 		CBaseEntity* pEnt = tr.m_pEnt;
 		++pPoint->m_nTouches;

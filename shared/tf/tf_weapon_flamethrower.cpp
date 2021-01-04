@@ -6,6 +6,24 @@
 #include "in_buttons.h"
 #include "ammodef.h"
 #include "tf_gamerules.h"
+#include "explode.h"
+#include "tf_player.h"
+#include "tf_gamestats.h"
+#include "ilagcompensationmanager.h"
+#include "collisionutils.h"
+#include "tf_team.h"
+#include "tf_obj.h"
+#include "tf_weapon_grenade_pipebomb.h"
+#include "particle_parse.h"
+#include "tf_weaponbase_grenadeproj.h"
+#include "tf_weapon_compound_bow.h"
+#include "tf_projectile_arrow.h"
+#include "tf_gamestats.h"
+#include "NextBot/NextBotManager.h"
+#include "halloween/merasmus/merasmus_trick_or_treat_prop.h"
+#include "tf_logic_robot_destruction.h"
+
+// I'm just going to include files until my intellisense works 
 
 // %REVERSED 12/24/2020
 
@@ -21,7 +39,7 @@ CTFFlameThrower::CTFFlameThrower()
 	m_bHitTarget = false;
 	field_7ec = 0;
 	field_7f0 = 0;
-	m_flChargeBeginTime = 0.0;
+	m_flChargeBeginTime = 0.0f;
 	field_7F8 = 0;
 	m_hFlameManager = (EHANDLE)-1;
 	m_bHasHalloweenSpell = 0;
@@ -99,20 +117,16 @@ bool CTFFlameThrower::CanAirBlastPutOutTeammate(void)
 //tf_airblast_cray_stun_amount             : 0        : , "sv", "cheat"  : Amount of control loss to apply if stun_duration is set.
 //tf_airblast_cray_stun_duration           : 0        : , "sv", "cheat"  : If set, apply this duration of stun when initially hit by an airblast.  Does not apply to repeated airblasts.
 
-// 70% ; Jesus Christ
+// 80% ; Jesus Christ
 void CTFFlameThrower::ComputeCrayAirBlastForce(CTFPlayer *pAirblasted, CTFPlayer *pAirblaster, Vector &vec_in, Vector &vec_out)
 {
 	float flCrayPower = tf_airblast_cray_power.GetFloat();
 	CALL_ATTRIB_HOOK_FLOAT(flCrayPower, airblast_pushback_scale);
+	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER(pAirblasted, flCrayPower, airblast_vulnerability_multiplier);
 
 	float flVCrayPower = 1.0f;
 	CALL_ATTRIB_HOOK_FLOAT(flVCrayPower, airblast_vertical_pushback_scale);
-
-	float flMult = 1.0f;
-	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER(pAirblasted, flMult, airblast_vulnerability_multiplier);
-
-	float flVMult = 1.0f;
-	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER(pAirblasted, flVMult, airblast_vertical_vulnerability_multiplier);
+	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER(pAirblasted, flVCrayPower, airblast_vertical_vulnerability_multiplier);
 
 	Vector vecPos = pAirblasted->GetAbsPosition();
 	Vector vecVel = pAirblasted->GetAbsVelocity();
@@ -176,19 +190,19 @@ void CTFFlameThrower::ComputeCrayAirBlastForce(CTFPlayer *pAirblasted, CTFPlayer
 	}
 
 	if (!tf_airblast_cray_power_relative.GetBool())
-		flVelocity = 0.0;
+		flVelocity = 0.0f;
 
-	float flDiff = flVelocity + v78 - flCost;
-	if (flDiff > 0.0)
+	float flDiff = flVelocity + flCrayPower - flCost;
+	if (flDiff > 0.0f)
 	{
 		Vector vecDiff = vec_in * flDiff;
 		vecOut += vecDiff;
-		if (tf_airblast_cray_debug.GetFloat() > 0.0)
+		if (tf_airblast_cray_debug.GetFloat() > 0.0f)
 		{
 			Vector vecMuzzle = GetMuzzlePosHelper();
 			Vector vecArrow = vecMuzzle * 0.5f + vecDiff;
 			NDebugOverlay::HorzArrow(vecMuzzle, vecArrow, 2.0f, 0, 0, 200, 255, 1, tf_airblast_cray_debug.GetFloat());
-			CFmtStrN<256> s("Remaining power after reflection ( %f power - %f reflection * %f cost coeff )", flVelocity + v78, flDiff, flCost);
+			CFmtStrN<256> s("Remaining power after reflection ( %f power - %f reflection * %f cost coeff )", flVelocity + flCrayPower, flDiff, flCost);
 			NDebugOverlay::Text(vecArrow, s.Get(), false, tf_airblast_cray_debug.GetFloat());
 		}
 	}
@@ -277,8 +291,8 @@ void CTFFlameThrower::ComputeCrayAirBlastForce(CTFPlayer *pAirblasted, CTFPlayer
 		}
 	}
 
-	if (flMult != 1.0f)
-		vecOut.z *= flMult;
+	if (flVCrayPower != 1.0f)
+		vecOut.z *= flVCrayPower;
 //	if (tf_airblast_cray_debug.GetFloat() > 0.0)
 //	{
 //		v103.z = v98;
@@ -290,7 +304,7 @@ void CTFFlameThrower::ComputeCrayAirBlastForce(CTFPlayer *pAirblasted, CTFPlayer
 //		v75 = v96 + 20.0;
 //		v103.y = v97;
 //		v77 = v97;
-//		v89 = flMult * v13;
+//		v89 = flCrayPower * v13;
 //		NDebugOverlay::HorzArrow(&v103, &v115, 0x40000000, &word_32, 90, 90, 255, 1, SLOBYTE(tf_airblast_cray_debug.GetFloat()), v63);
 //		v56 = v13;
 //		CFmtStrN<256, false>::CFmtStrN(
@@ -335,4 +349,168 @@ void CTFFlameThrower::ComputeCrayAirBlastForce(CTFPlayer *pAirblasted, CTFPlayer
 //		return __readgsdword(0x14u) ^ v127;
 //	}
 	vec_out = vecOut;
+}
+
+// END REVERSE 12/29/2020
+
+// %REVERSED 1/4/2020
+
+// 95%
+bool CTFFlameThrower::DeflectPlayer(CTFPlayer *pAirblasted, CTFPlayer *pAirblaster, Vector &vecFwd)
+{
+	if (pAirblasted->GetTeamNumber() != pAirblasted->GetTeamNumber() || pAirblasted == pAirblaster)
+	{
+		if (!CanAirBlastPushPlayer())
+			return false;
+
+		if (pAirblasted->m_Shared.IsImmuneToPushback())
+			return false;
+
+		int reverseairblast;
+		CALL_ATTRIB_HOOK_INT(reverseairblast, reverse_airblast);
+
+		Vector vecGo;
+		if (pAirblasted == pAirblaster)
+		{
+			vecGo = vecFwd;
+		}
+		else
+		{
+			vecGo = (pAirblaster->WorldSpaceCenter() - pAirblasted->WorldSpaceCenter()).Normalized();
+		}
+
+		float conescale = 1.0f;
+		CALL_ATTRIB_HOOK_FLOAT(conescale, mult_airblast_cone_scale);
+		conescale *= 35.0f;
+
+		truncatedcone_t cone;
+		cone.origin = pAirblaster->EyePosition();
+		cone.normal = vecFwd;
+		cone.h = GetDeflectionRadius() * 2.0f;	// TODO;
+		cone.theta = conescale;
+		if (!physcollision->IsBoxIntersectingCone(pAirblasted->GetAbsOrigin() + pAirblasted->WorldAlignMins(), pAirblasted->GetAbsOrigin() + pAirblasted->WorldAlignMaxs(), cone))
+			return false;
+
+		int noviewpunch;
+		CALL_ATTRIB_HOOK_INT(noviewpunch, airblast_pushback_no_viewpunch);
+
+		if (pAirblasted != pAirblaster && !noviewpunch)
+		{
+			pAirblasted->ApplyPunchImpulseX(RandomInt(10, 15));
+		}
+
+		pAirblasted->SpeakConceptIfAllowed(MP_CONCEPT_DEFLECTED, "projectile:0,victim:1");	// 68
+		if (tf_airblast_cray.GetBool())	// Not sure with this cvar
+		{
+			Vector vecAng;
+			Vector vecImpulse;
+			if (tf_airblast_cray_pitch_control.GetBool())
+			{
+				vecAng = vecFwd;
+			}
+			else
+			{
+				QAngle vecFwdAng;
+				VectorAngles(vecFwd, vecFwdAng);
+				VectorAngles(vecGo, vecImpulse);
+				vecFwdAng.y = vecImpulse.y;
+				AngleVectors(vecFwdAng, vecAng);
+			}
+
+			ComputeCrayAirBlastForce(pAirblasted, pAirblaster, vecAng, vecImpulse);
+			pAirblasted->RemoveFlag(FL_ONGROUND);
+			pAirblasted->SetGroundEntity(NULL);
+			if (!pAirblased->m_Shared.InCond(TF_COND_KNOCKED_INTO_AIR))	// 115
+			{
+				int nostun;
+				CALL_ATTRIB_HOOK_INT(nostun, airblast_pushback_no_stun);
+				if (!nostun)
+				{
+					float stundir = tf_airblast_cray_stun_duration.GetFloat();
+					float stunamt = tf_airblast_cray_stun_amount.GetFloat();
+					if (stundir > 0.0f && stunamt > 0.0f)
+						pAirblasted->m_Shared.StunPlayer(stundir, stunamt, TF_STUN_MOVEMENT, pAirblaster);
+				}
+			}
+			float lostfooting = tf_airblast_cray_lose_footing_duration.GetFloat();
+			if (lostfooting != 0.0f)
+				pAirblasted->m_Shared.AddCond(TF_COND_LOST_FOOTING, lostfooting);
+
+			pAirblasted->m_Shared.AddCond(TF_COND_AIR_CURRENT, -1.0f);
+			pAirblasted->m_Shared.AddCond(TF_COND_KNOCKED_INTO_AIR, -1.0f);
+			pAirblasted->ApplyAbsVelocityImpulse(vecImpulse);
+		}
+		else
+		{
+			int pushbacknostun;
+			CALL_ATTRIB_HOOK_INT(pushbacknostun, airblast_pushback_no_stun);
+			if (!pushbacknostun && !pAirblasted->m_Shared.InCond(TF_COND_KNOCKED_INTO_AIR))
+				pAirblasted->m_Shared.StunPlayer(0.5f, 1.0f, TF_STUN_MOVEMENT, pAirblaster);
+
+			Vector vecBox = pAirblasted->WorldAlignMaxs() - pAirblasted->WorldAlignMins();
+			float flMin = 188928.0f / vecBox.LengthSqr() * 360.0f;
+			float flScale = fminf(flMin, 1000.0f);
+			CALL_ATTRIB_HOOK_FLOAT(flScale, airblast_pushback_scale);
+
+			Vector vecPush = vecGo * flScale;
+			float flVertScale;
+			flVertScale = tf_flamethrower_burst_zvelocity.GetFloat();
+			if (reverseairblast)
+			{
+				vecPush = -vecPush;
+				flVertScale *= 0.75f;
+			}
+
+			float flVertScaleScaled;
+			CALL_ATTRIB_HOOK_FLOAT(flVertScaleScaled, airblast_vertical_pushback_scale);
+
+			vecPush.z += flVertScaleScaled;
+			pAirblasted->SetAbsVelocity(vec3_origin);
+			pAirblasted->ApplyGenericPushbackImpulse(vecPush);
+		}
+
+		pAirblasted->field_201c.AddDamagerToHistory(pAirblaster->GetRefEHandle());
+		SendObjectDeflectedEvent(pAirblaster, pAirblasted, 0, pAirblasted);
+		pAirblasted->m_Shared.InterruptCharge();
+		pAirblasted->field_201c.AddPusherToHistory(pAirblaster->GetRefEHandle());
+		if (TFGameRules() && (pAirblasted->IsMiniBoss() || pAirblasted->m_Shared.IsInvulnerable()))
+		{
+			CTF_GameStats.Event_PlayerAwardBonusPoints(pAirblaster, pAirblasted, pAirblasted->IsMiniBoss() ? 10 : 5);
+		}
+		return true;
+	}
+
+	if (pAirblasted->m_Shared.InCond(TF_COND_BURNING) && CanAirBlastPutOutTeammate())
+	{
+		ExtinguishPlayer(this, pAirblaster, pAirblasted, "tf_weapon_flamethrower");
+		int restorehp;
+		CALL_ATTRIB_HOOK_INT(restorehp, extinguish_restores_health);
+		if (restorehp > 0)
+		{
+			pAirblasted->TakeHealth((float)restorehp, 0);
+
+			IGameEvent *pEvent = gameeventmanager->CreateEvent("player_healonhit");
+			if (pEvent)
+			{
+				pEvent->SetInt("amount", iRestoreHealthOnExtinguish);
+				pEvent->SetInt("entindex", pOwner->entindex());
+				item_definition_index_t itemdef = INVALID_ITEM_DEF_INDEX;
+				if (GetAttributeContainer() && GetAttributeContainer()->GetItem())
+				{
+					itemdef = GetAttributeContainer()->GetItem()->GetItemDefIndex();
+				}
+				pEvent->SetInt("weapon_def_index", itemdef);
+
+				gameeventmanager->FireEvent(pEvent);
+			}
+		}
+		float speedboost;
+		CALL_ATTRIB_HOOK_FLOAT(speedboost, airblast_give_teammate_speed_boost);
+		if (speedboost > 0.0f)
+		{
+			pAirblasted->m_Shared.AddCond(TF_COND_SPEED_BOOST, speedboost);
+			pAirblaster->m_Shared.AddCond(TF_COND_SPEED_BOOST, speedboost + 1.0f);
+		}
+	}
+	return false;
 }

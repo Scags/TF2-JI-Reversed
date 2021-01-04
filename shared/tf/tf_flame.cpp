@@ -74,21 +74,21 @@ CTFFlameManager::CTFFlameManager()
 	m_BurnedEntities = CUtlMap<CHandle<CBaseEntity>, burned_entity_t>();
 	m_hWeapon = -1;
 	m_hAttacker = -1;
-	m_flSpreadDegree = 0.0;
-	m_flRedirectedFlameSizeMult = 1.0;
-	m_flFlameStartSizeMult = 1.0;
-	m_flFlameEndSizeMult = 1.0;
-	m_flFlameIgnorePlayerVelocity = 0.0;
-	m_flFlameReflectionAdditionalLifeTime = 0.0;
-	m_flFlameReflectionDamageReduction = 1.0;
+	m_flSpreadDegree = 0.0f;
+	m_flRedirectedFlameSizeMult = 1.0f;
+	m_flFlameStartSizeMult = 1.0f;
+	m_flFlameEndSizeMult = 1.0f;
+	m_flFlameIgnorePlayerVelocity = 0.0f;
+	m_flFlameReflectionAdditionalLifeTime = 0.0f;
+	m_flFlameReflectionDamageReduction = 1.0f;
 	m_iMaxFlameReflectionCount = 0;
 	m_nShouldReflect = 0;
-	m_flFlameSpeed = 0.0;
-	m_flFlameLifeTime = 0.0;
-	m_flRandomLifeTimeOffset = 0.0;
-	m_flFlameGravity = 0.0;
-	m_flFlameDrag = 0.0;
-	m_flFlameUp = 0.0;
+	m_flFlameSpeed = 0.0f;
+	m_flFlameLifeTime = 0.0f;
+	m_flRandomLifeTimeOffset = 0.0f;
+	m_flFlameGravity = 0.0f;
+	m_flFlameDrag = 0.0f;
+	m_flFlameUp = 0.0f;
 	m_bIsFiring = 0;
 }
 
@@ -129,7 +129,7 @@ void CTFFlameManager::InitializePoint(tf_point_t *pPoint, int iIndex)
 {
 	flame_point_t *pFlamePoint = static_cast< flame_point_t * >(pPoint);
 
-	CTFPointManager::InitializePoint(this, pPoint, iIndex);
+	BaseClass::InitializePoint(pPoint, iIndex);
 	CBaseEntity *pAttacker = m_hAttacker.Get();
 	if (pAttacker)
 	{
@@ -148,7 +148,7 @@ Vector CTFFlameManager::GetInitialVelocity(void)
 		QAngle vecEyes = pAttacker->EyeAngles();
 		Vector vecDir;
 		AngleVectors(vecEyes, &vecDir);
-		if (m_flSpreadDegree > 0.0)
+		if (m_flSpreadDegree > 0.0f)
 		{
 			Vector vecWhat = Vector(0.017453292f * m_flSpreadDegree);
 			CShotManipulator manipulator(vecDir);
@@ -192,10 +192,10 @@ void CTFFlameManager::ModifyAdditionalMovementInfo(tf_point_t *pPoint, float sca
 
 		float normalized = vecVel.NormalizeInPlace();
 		float drag = GetDrag();
-		float computed = (1.0 - (drag * scale)) * normalized;
-		float fOut = 0.0;
+		float computed = (1.0f - (drag * scale)) * normalized;
+		float fOut = 0.0f;
 
-		if (computed >= 0.0)
+		if (computed >= 0.0f)
 			fOut = fminf(normalized, computed);
 		pFlamePoint->m_vecAttackerVel *= fOut;
 	}
@@ -209,17 +209,15 @@ bool CTFFlameManager::OnPointHitWall(tf_point_t *pPoint, Vector &vecPos, Vector 
 	if (m_iMaxFlameReflectionCount <= 0 || pPoint->m_nTouches <= m_iMaxFlameReflectionCount)
 	{
 		pPoint->m_flLifeTime += m_flFlameReflectionAdditionalLifeTime;
-		Vector vecNormal = tf->plane.normal;
-		float vellength = vecPos.LengthSqr();
-		Vector vecMove = (vecPos - vecNormal * vellength);
-		if (this->m_nShouldReflect > 0)
+		Vector vecMove = (vecPos - tr->plane.normal * vecPos.LengthSqr());
+		if (m_nShouldReflect > 0)
 		{
-			vecMove += vecMove - vecPos;
+			vecMove += vecMove - vecAdditionalVel;
 		}
 
 		pPoint->m_vecAttackerVel = vec3_origin;
-		vecPos = vecMove;
-		vecPos = (vecNormal * GetRadius(pPoint) + tr.endpos) + (vecOut * ((1.0f - tr.fraction) * scale));
+		vecAdditionalVel = vecMove;
+		vecPos = (tr->endpos + (tr->plane.normal * GetRadius(pPoint))) + (vecMove * ((1.0f - tr.fraction) * scale));
 		return false;
 	}
 	return true;
@@ -252,7 +250,7 @@ void CTFFlameManager::StopFiring(void)
 // 100%
 void CTFFlameManager::Update(void)
 {
-	CTFPointManager::Update(this);
+	BaseClass::Update();
 	if (tf_debug_flamethrower.GetBool())
 	{
 		if (m_Points.Count() > 0)
@@ -272,12 +270,12 @@ void CTFFlameManager::Update(void)
 }
 
 // 100%
-void CTFFlameManager::UpdateDamage(int dmgflags, float a3, float a4, bool a5)
+void CTFFlameManager::UpdateDamage(int dmgflags, float dmg, float burndelay, bool iscrit)
 {
-	m_flDamage = a3;
+	m_flDamage = dmg;
 	m_fDamageFlags = dmgflags;
-	m_flBurnDelay = a4;
-	m_bIsCritical = a5;
+	m_flBurnDelay = burndelay;
+	m_bIsCritical = iscrit;
 }
 
 // 100%
@@ -371,7 +369,7 @@ float CTFFlameManager::GetEndSizeMult(void)
 // 100%
 bool CTFFlameManager::ShouldIgnorePlayerVelocity(void)
 {
-	return m_flFlameIgnorePlayerVelocity != 0.0;
+	return m_flFlameIgnorePlayerVelocity != 0.0f;
 }
 
 // 100%
@@ -463,7 +461,7 @@ float CTFFlameManager::GetFlameDamageScale(tf_point_t const *pPoint, CTFPlayer *
 	// VPROF_BUDGET
 	// Did I do this cast right? o_0
 	flame_point_t *pFlamePoint = const_cast<flame_point_t * >(pPoint);
-	float flOut = 0.0;
+	float flOut = 0.0f;
 	if (tf_flame_dmg_mode_dist.GetBool()) // *(dword_1754B9C + 48))
 	{
 		flOut = -0.5f * clamp(pPoint->m_vecStartPos.LengthSqr() - 22500.0f * 0.000014814815f, 0.0f, 1.0f);
@@ -472,13 +470,13 @@ float CTFFlameManager::GetFlameDamageScale(tf_point_t const *pPoint, CTFPlayer *
 	else
 	{
 		float diff = gpGlobals->curtime - pPoint->m_flSpawnTime;
-		flOut = RemapValClamped(diff, 0.0f, pPoint->m_flLifeTime * 0.5, 1.0f, 0.5f);
+		flOut = RemapValClamped(diff, 0.0f, pPoint->m_flLifeTime * 0.5f, 1.0f, 0.5f);
 	}
 
 	if (pPlayer)
 	{
 		unsigned short index = m_BurnedEntities.Find(pPlayer->GetRefEHandle());
-		float scale = 1.0;
+		float scale = 1.0f;
 		if (index != -1)
 		{
 			burned_entity_t burned = m_BurnedEntities[index];
@@ -542,7 +540,7 @@ bool CTFFlameManager::OnCollide(CBaseEntity *pEntity, int iIndex)
 	if (findindex != -1)
 	{
 		burned_entity_t *burned = &m_BurnedEntities[findindex];
-		burned->field_10 = (burned->field_10 + 2.0) - clamp((gpGlobals->curtime - m_Points[iIndex]->m_flSpawnTime) * 50.0, 0.0, 1.0);
+		burned->field_10 = (burned->field_10 + 2.0f) - clamp((gpGlobals->curtime - m_Points[iIndex]->m_flSpawnTime) * 50.0f, 0.0f, 1.0f);
 	}
 
 	if (!BCanBurnEntityThisFrame(pEntity))
@@ -572,7 +570,7 @@ bool CTFFlameManager::OnCollide(CBaseEntity *pEntity, int iIndex)
 
 			Vector vecFwd;
 			AngleVectors(vecAng, &vecFwd);
-			vecFwd.z = 0.0;
+			vecFwd.z = 0.0f;
 			vecFwd.NormalizeInPlace();
 			if (vecFwd.LengthSqr() * dist > 0.8f)
 			{
@@ -600,7 +598,7 @@ bool CTFFlameManager::OnCollide(CBaseEntity *pEntity, int iIndex)
 	
 		float scale = GetFlameDamageScale(pFlamePoint, pEntity->IsPlayer() ? pPlayer : NULL);
 		CBaseEntity *pOwner = m_hOwnerEntity.Get();
-		float damage = fmaxf(scale * m_flDamage, 1.0);
+		float damage = fmaxf(scale * m_flDamage, 1.0f);
 
 		CTakeDamageInfo info(pOwner, pEntity, pOwner, damage, damageflags, 3);
 
@@ -636,7 +634,7 @@ bool CTFFlameManager::OnCollide(CBaseEntity *pEntity, int iIndex)
 	{
 		burned = &m_BurnedEntities[m_BurnedEntities.Insert(pEntity->GetRefEHandle())];
 		burned->m_flSpawnTime = gpGlobals->curtime;
-		burned->field_8 = 1.0;
+		burned->field_8 = 1.0f;
 		burned->m_hEntity = pEntity->GetRefEHandle();
 	}
 	else

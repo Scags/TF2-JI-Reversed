@@ -22,7 +22,7 @@ LINK_ENTITY_TO_CLASS(tf_gas_manager, CTFGasManager)
 CTFGasManager::CTFGasManager()
 {
 	m_Gassed = CUtlVector<EHANDLE>();
-	m_flGasThinkTime = -1.0;
+	m_flGasThinkTime = -1.0f;
 	m_bShouldUpdate = true;
 }
 
@@ -84,7 +84,7 @@ void CTFGasManager::OnCollide(CBaseEntity *pEntity, int iIndex)
 	&& 	!pPlayer->m_Shared.InCond(TF_COND_PASSTIME_INTERCEPTION)	// 106
 	&& 	 pPlayer->CanGetWet())
 	{
-		pPlayer->m_Shared.AddCond(TF_COND_GAS, 10.0, m_hOwnerEntity.Get());	// 123
+		pPlayer->m_Shared.AddCond(TF_COND_GAS, 10.0f, m_hOwnerEntity.Get());	// 123
 	}
 
 	m_Gassed.AddToTail(pPlayer->GetRefEHandle());
@@ -139,7 +139,7 @@ void CTFGasManager::Update(CTFGasManager *this)
 			pPoint->m_vecEndPos = pPoint->m_vecStartPos;
 		}
 
-		if (m_flGasThinkTime <= 1.0)
+		if (m_flGasThinkTime <= 1.0f)
 		{
 			m_flGasThinkTime = gpGlobals->curtime;
 		}
@@ -335,7 +335,7 @@ void CTFProjectile_Jar::Explode(trace_t *pTrace, int bitsDamageType)
 	AddSolidFlags(FSOLID_NOT_SOLID);
 	m_takedamage = 0;
 
-	if (pTrace->fraction != 1.0)
+	if (pTrace->fraction != 1.0f)
 	{
 		SetAbsOrigin(pTrace->endpos + (pTrace->plane.normal * 1.0f));
 	}
@@ -354,9 +354,9 @@ void CTFProjectile_Jar::Explode(trace_t *pTrace, int bitsDamageType)
 		UTIL_TraceLine(vecOrigin, vecEnd, flags, traceFilter, COLLISION_GROUP_NONE, &trace);
 
 		Vector vecSpot = vecOrigin;
-		if (trace.fraction != 1.0)
+		if (trace.fraction != 1.0f)
 		{
-			vecSpot.z += 30.0;
+			vecSpot.z += 30.0f;
 		}
 
 		CTFGasManager *pGas = CTFGasManager::Create(pThrower, vecSpot);
