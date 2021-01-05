@@ -103,7 +103,7 @@ void CTFPointManager::Spawn()
 	m_nRandomSeed = RandomInt(0, 9999);
 
 	// Assuming this is what it's called, /shrug
-	SetContextThink(&CTFPointManager::PointThink, gpGlobals->curtime, "PointThink");
+	SetContextThink(&CTFPointManager::PointThink, gpGlobals->curtime, NULL);
 }
 
 // 100%
@@ -118,7 +118,7 @@ unsigned int CTFPointManager::PhysicsSolidMaskForEntity(void)
 void CTFPointManager::PointThink(void)
 {
 	Update();
-	SetNextThink(gpGlobals->curtime, "PointThink");
+	SetNextThink(gpGlobals->curtime, NULL);
 }
 
 // 100%
@@ -192,10 +192,14 @@ bool CTFPointManager::AddPointInternal(int index)
 	return true;
 }
 
-// 90% ; most likely operational
+// 95% ; most likely operational
 void CTFPointManager::Update(void)
 {
 	// VPROF_BUDGET(what, ever);
+
+	float thinktime = gpGlobals->curtime - m_flThinkTime;
+	if (thinktime <= 0.0f)
+		return;
 	
 	int numpoints = m_Points.Count();
 	m_flThinkTime = gpGlobals->curtime;
@@ -211,7 +215,7 @@ void CTFPointManager::Update(void)
 		Vector vec1, vec2, vec3;
 		if ((enginetrace->GetPointContents(point->m_vecSpartPos) & 0x4030) != 0
 		|| gpGlobals->curtime > (point->m_flSpawnTime + point->m_flLifetime)
-		|| !UpdatePoint(point, i, m_flThinkTime, &vec1, &vec2, &vec3))
+		|| !UpdatePoint(point, i, thinktime, &vec1, &vec2, &vec3))
 		{
 			RemovePoint(point);
 			continue;

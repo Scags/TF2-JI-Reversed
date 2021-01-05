@@ -213,7 +213,7 @@ void CTFFlameThrower::ComputeCrayAirBlastForce(CTFPlayer *pAirblasted, CTFPlayer
 		if (tf_airblast_cray_ground_reflect.GetBool())
 		{
 			trace_t tr;
-			UTIL_TraceHull(vecPos, vecPos, pAirblasted->GetPlayerMins(), pAirblasted->GetPlayerMaxs(), 0xC0A00000, pAirblasted, COLLISION_GROUP_PLAYER_MOVEMENT, &tr);
+			UTIL_TraceHull(vecPos, vecPos, pAirblasted->GetPlayerMins(), pAirblasted->GetPlayerMaxs(), 0x201400B, pAirblasted, COLLISION_GROUP_PLAYER_MOVEMENT, &tr);
 
 			if (tr.DidHit())
 			{
@@ -252,7 +252,7 @@ void CTFFlameThrower::ComputeCrayAirBlastForce(CTFPlayer *pAirblasted, CTFPlayer
 			if (flMomentum > 0.0f)
 			{
 				// Wtf
-				float fl2dlensq = (vecOut.y * vecOut.y) + (vecOut.x * vecOut.x);
+				float fl2dlensq = vecOut.Length2DSqr();
 				float fl2dlen = FastSqrt(fl2dlensq);
 				float fl3dlensq = (vecOut.z * vecOut.z) + fl2dlensq;
 				float min = fminf(flMomentum, fl2dlen);
@@ -266,9 +266,9 @@ void CTFFlameThrower::ComputeCrayAirBlastForce(CTFPlayer *pAirblasted, CTFPlayer
 					float zmin = (vecOut.z + vecOut.z) * min;
 					float sqrd = FastSqrt(fmaxf((fl2dlensq - minsq) - zmin, 0.0f)) / fl2dlen;
 
-					vecGo.z = min + vecOut.z;
+					vecGo.x = vecOut.x * sqrd;
 					vecGo.y = vecOut.y * sqrd;
-					vecGo.z = vecOut.z * sqrd;
+					vecGo.z = min + vecOut.z;
 				}
 
 //				if (tf_airblast_cray_debug.GetFloat() > 0.0)
